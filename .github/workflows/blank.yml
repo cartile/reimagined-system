@@ -32,6 +32,9 @@ jobs:
       # Runs a set of commands using the runners shell
       - name: Run a multi-line script
         run: |
-          echo ::error:: Add other actions to :rabbit: build, :runner: | tee -a $GITHUB_STEP_SUMMARY
+          echo ::error:: Add *other* _actions_ to :rabbit: build, :runner: | tee -a $GITHUB_STEP_SUMMARY
+          (
+          echo '# gy'
           echo ::notice:: test, and deploy your project.
           echo ::warning:: you have been warned
+          ) | tee -a $GITHUB_STEP_SUMMARY
