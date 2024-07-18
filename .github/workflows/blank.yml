@@ -37,4 +37,5 @@ jobs:
           echo '# gy'
           echo ::notice:: test, and deploy your project.
           echo ::warning:: you have been warned
-          ) | tee -a $GITHUB_STEP_SUMMARY
+          )
+          echo | tee -a $GITHUB_STEP_SUMMARY
