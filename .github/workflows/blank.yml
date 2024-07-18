@@ -33,9 +33,8 @@ jobs:
       - name: Run a multi-line script
         run: |
           echo ::error:: Add *other* _actions_ to :rabbit: build, :runner: | tee -a $GITHUB_STEP_SUMMARY
-          (
+          for a in $(seq 12); do (
           echo '# gy'
           echo ::notice:: test, and deploy your project.
           echo ::warning:: you have been warned
-          )
-          echo | tee -a $GITHUB_STEP_SUMMARY
+          ); done | tee -a $GITHUB_STEP_SUMMARY
