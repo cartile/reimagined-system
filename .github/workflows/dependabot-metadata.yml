@@ -1,0 +1,33 @@
+name: Get Dependabot Pull Request Metadata
+on:
+  pull_request:
+permissions:
+  pull-requests: read
+jobs:
+  dependabot:
+    runs-on: ubuntu-latest
+    # Checking the actor will prevent your Action run failing on non-Dependabot
+    # PRs but also ensures that it only does work for Dependabot PRs.
+    if: ${{ github.actor == 'dependabot[bot]' }}
+    steps:
+      # This first step will fail if there's no metadata and so the approval
+      # will not occur.
+      - name: Dependabot metadata
+        id: dependabot-metadata
+        uses: dependabot/fetch-metadata@v2
+        with:
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+      - name: Write Artifact
+        shell: bash
+        env:
+          update_type: ${{ steps.dependabot-metadata.outputs.update-type }}
+        run: |
+          update_type=$(echo "$update_type" | perl -pe 's/.*-//')
+          echo "$update_type" > update-type.txt
+          echo "Update type: $update_type" >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload Artifact
+        if: env.update_type != 'version-update:semver-major'
+        uses: actions/upload-artifact@v4
+        with:
+          name: version-update
+          path: update-type.txt
