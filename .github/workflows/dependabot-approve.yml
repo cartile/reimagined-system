@@ -59,12 +59,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           echo "### Approved Pull Requests" >> $GITHUB_STEP_SUMMARY
-          jq -r '.[].url' open-prs.json | while read -r url; do
-            echo "Approving PR: $url"
+          jq -j '.[] | "\(.title)\u0000\(.url)\u0000"' open-prs.json | while IFS= read -r -d '' title && IFS= read -r -d '' url; do
+            echo "Approving PR: '$title' ($url)"
             if gh pr review --approve "$url"; then
-              echo "✅ Approved PR: [$url]($url)" >> $GITHUB_STEP_SUMMARY
+              echo "✅ Approved: [${title}](${url})" >> $GITHUB_STEP_SUMMARY
             else
-              echo "❌ Failed to approve PR: [$url]($url)" >> $GITHUB_STEP_SUMMARY
+              echo "❌ Failed: [${title}](${url})" >> $GITHUB_STEP_SUMMARY
             fi
           done
 
