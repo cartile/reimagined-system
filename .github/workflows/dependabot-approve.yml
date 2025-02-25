@@ -54,3 +54,20 @@ jobs:
                 tee -a "$GITHUB_STEP_SUMMARY"
             fi
           done
+      - name: Approve Valid PRs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          jq -r '.[].url' open-prs.json | while read -r url; do
+            gh pr review --approve "$url"
+          done
+
+      # Finally, this sets the PR to allow auto-merging for patch and minor
+      # updates if all checks pass
+      #- name: Enable auto-merge for Dependabot PRs
+      #  if: ${{ steps.dependabot-metadata.outputs.update-type != 'version-update:semver-major' }}
+      #  env:
+      #    PR_URL: ${{ github.event.pull_request.html_url }}
+      #    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #  run: gh pr merge --auto --squash "$PR_URL"
+
