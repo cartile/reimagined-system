@@ -1,16 +1,19 @@
-name: Get Dependabot Pull Request Metadata
+name: Approve Potential Dependabot PRs
 on:
+  #on: pull_request_target
   #schedule:
   push:
     branches: test
   workflow_dispatch:
 permissions:
-  #pull-requests: write
-  #contents: write
-  # not needed yet...
-  pull-requests: read
-  contents: read
-
+  pull-requests: write
+  contents: write
+#           gh pr -R "$GITHUB_REPOSITORY" list --search "updated:<$well_aged is:pr is:open author:app/dependabot" --json additions,assignees,author,autoMergeRequest,baseRefName,body,changedFiles,closed,closedAt,comments,commits,createdAt,deletions,files,fullDatabaseId,headRefName,headRefOid,headRepository,headRepositoryOwner,id,isCrossRepository,isDraft,labels,latestReviews,maintainerCanModify,mergeCommit,mergeStateStatus,mergeable,mergedAt,mergedBy,milestone,number,potentialMergeCommit,projectCards,reactionGroups,reviewDecision,reviewRequests,reviews,state,statusCheckRollup,title,updatedAt,url > open-prs.json
+#          (
+#            echo '```json'
+#            cat open-prs.json
+#            echo '```'
+#          ) >> $GITHUB_STEP_SUMMARY
 env:
   #threshold: 27
   # for testing purposes
@@ -27,14 +30,12 @@ jobs:
           set -x
           well_aged=(date +%Y-%m-%d --date="$threshold days ago")
 
-          gh pr -R "$GITHUB_REPOSITORY" list --search "updated:<$well_aged is:pr is:open author:app/dependabot" --json additions,assignees,author,autoMergeRequest,baseRefName,body,changedFiles,closed,closedAt,comments,commits,createdAt,deletions,files,fullDatabaseId,headRefName,headRefOid,headRepository,headRepositoryOwner,id,isCrossRepository,isDraft,labels,latestReviews,maintainerCanModify,mergeCommit,mergeStateStatus,mergeable,mergedAt,mergedBy,milestone,number,potentialMergeCommit,projectCards,reactionGroups,reviewDecision,reviewRequests,reviews,state,statusCheckRollup,title,updatedAt,url > open-prs.json
+          gh pr -R "$GITHUB_REPOSITORY" list --search "is:pr is:open author:app/dependabot" --json additions,assignees,author,autoMergeRequest,baseRefName,body,changedFiles,closed,closedAt,comments,commits,createdAt,deletions,files,fullDatabaseId,headRefName,headRefOid,headRepository,headRepositoryOwner,id,isCrossRepository,isDraft,labels,latestReviews,maintainerCanModify,mergeCommit,mergeStateStatus,mergeable,mergedAt,mergedBy,milestone,number,potentialMergeCommit,projectCards,reactionGroups,reviewDecision,reviewRequests,reviews,state,statusCheckRollup,title,updatedAt,url > open-prs.json
           (
             echo '```json'
             cat open-prs.json
             echo '```'
           ) >> $GITHUB_STEP_SUMMARY
-
-
 
           for workflow_run in $(
             gh run -R "$GITHUB_REPOSITORY" list \
