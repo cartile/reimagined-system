@@ -58,8 +58,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          echo "### Approved Pull Requests" >> $GITHUB_STEP_SUMMARY
           jq -r '.[].url' open-prs.json | while read -r url; do
-            gh pr review --approve "$url"
+            echo "Approving PR: $url"
+            if gh pr review --approve "$url"; then
+              echo "✅ Approved PR: [$url]($url)" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "❌ Failed to approve PR: [$url]($url)" >> $GITHUB_STEP_SUMMARY
+            fi
           done
 
       # Finally, this sets the PR to allow auto-merging for patch and minor
