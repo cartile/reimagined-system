@@ -36,7 +36,6 @@ jobs:
             --json number,title,url,statusCheckRollup \
             > open-prs.json
 
-          rm -f version-updates.txt
           workflow_runs=$(gh run list -R "$GITHUB_REPOSITORY" \
             -e 'pull_request' \
             -u 'dependabot' \
@@ -48,7 +47,6 @@ jobs:
             if gh run download -R "$GITHUB_REPOSITORY" "$run_id" -n version-update 2>/dev/null; then
               version_type=$(cat update-type.txt)
               echo "$run_id $version_type" >> version-updates.txt
-            fi
             rm -f update-type.txt
           done
 
@@ -57,7 +55,7 @@ jobs:
           echo "### Version Updates" >> $GITHUB_STEP_SUMMARY
           cat version-updates.txt >> $GITHUB_STEP_SUMMARY
 
-      - name: Approve Valid PRs
+      - name: Approve And Merge Valid PRs
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -81,6 +79,8 @@ jobs:
               if [[ "$version_type" =~ ^(patch|minor)$ ]]; then
                 if gh pr review --approve "$pr_url"; then
                   echo "✅ Approved: [${pr_title}](${pr_url}) ($version_type)" >> $GITHUB_STEP_SUMMARY
+                  # if gh pr merge --auto --squash "$pr_url"; then
+                  #  echo "⑃ Enabled Auto-Merge for: [${pr_title}](${pr_url}) ($version_type)" >> $GITHUB_STEP_SUMMARY
                 else
                   echo "❌ Failed: [${pr_title}](${pr_url}) " >> $GITHUB_STEP_SUMMARY
                 fi
