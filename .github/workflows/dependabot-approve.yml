@@ -1,0 +1,104 @@
+name: Approve Potential Dependabot PRs
+on:
+  #on: pull_request_target
+  #schedule:
+  push:
+    branches: test
+  workflow_dispatch:
+permissions:
+  pull-requests: write
+  contents: write
+#           gh pr -R "$GITHUB_REPOSITORY" list --search "updated:<$well_aged is:pr is:open author:app/dependabot" --json additions,assignees,author,autoMergeRequest,baseRefName,body,changedFiles,closed,closedAt,comments,commits,createdAt,deletions,files,fullDatabaseId,headRefName,headRefOid,headRepository,headRepositoryOwner,id,isCrossRepository,isDraft,labels,latestReviews,maintainerCanModify,mergeCommit,mergeStateStatus,mergeable,mergedAt,mergedBy,milestone,number,potentialMergeCommit,projectCards,reactionGroups,reviewDecision,reviewRequests,reviews,state,statusCheckRollup,title,updatedAt,url > open-prs.json
+#          (
+#            echo '```json'
+#            cat open-prs.json
+#            echo '```'
+#          ) >> $GITHUB_STEP_SUMMARY
+env:
+  #threshold: 27
+  # for testing purposes
+  threshold: 1
+jobs:
+  dependabot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Read Artifacts
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -x
+          
+          well_aged=(date +%Y-%m-%d --date="$threshold days ago")
+          
+          gh pr -R "$GITHUB_REPOSITORY" list \
+            --search "is:pr is:open author:app/dependabot" \
+            --json number,title,url,statusCheckRollup \
+            > open-prs.json
+
+          # Get successful metadata workflow runs
+          rm -f version-updates.txt
+          workflow_runs=$(gh run list -R "$GITHUB_REPOSITORY" \
+            -e 'pull_request' \
+            -u 'dependabot' \
+            -s success \
+            -w dependabot-metadata.yml \
+            --json databaseId,workflowName)
+          
+          echo "$workflow_runs" | jq -r '.[].databaseId' | while read -r run_id; do
+            if gh run download -R "$GITHUB_REPOSITORY" "$run_id" -n version-update 2>/dev/null; then
+              version_type=$(cat update-type.txt)
+              echo "$run_id $version_type" >> version-updates.txt
+            fi
+            rm -f update-type.txt
+          done
+
+          echo "### Open PRs" >> $GITHUB_STEP_SUMMARY
+          cat open-prs.json | jq >> $GITHUB_STEP_SUMMARY
+          echo "### Version Updates" >> $GITHUB_STEP_SUMMARY
+          cat version-updates.txt >> $GITHUB_STEP_SUMMARY
+
+      - name: Approve Valid PRs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "### Approval Results" >> $GITHUB_STEP_SUMMARY
+          
+          jq -r '.[]
+          | select(.statusCheckRollup != null)
+          | .url as $pr_url
+          | .title as $pr_title
+          | .statusCheckRollup[]
+          | select(.workflowName == "Get Dependabot Pull Request Metadata")
+          | [$pr_url, $pr_title, .detailsUrl]
+          | @tsv' open-prs.json > prs-metadata.tsv
+
+          while IFS=$'\t' read -r pr_url pr_title details_url; do
+            run_id=$(grep -oP 'runs/\K\d+' <<< "$details_url")
+            version_info=$(grep "^$run_id " version-updates.txt || true)
+
+            if [[ -n "$version_info" ]]; then
+              version_type=$(awk '{print $2}' <<< "$version_info")
+              if [[ "$version_type" =~ ^(patch|minor)$ ]]; then
+                if gh pr review --approve "$pr_url"; then
+                  echo "✅ Approved: [${pr_title}](${pr_url}) ($version_type)" >> $GITHUB_STEP_SUMMARY
+                else
+                  echo "❌ Failed: [${pr_title}](${pr_url}) " >> $GITHUB_STEP_SUMMARY
+                fi
+              else
+                echo "⚠️ Skipped: [${pr_title}](${pr_url})  (version: $version_type)" >> $GITHUB_STEP_SUMMARY
+              fi
+            else
+              echo "⏭️ No metadata: [${pr_title}](${pr_url}) " >> $GITHUB_STEP_SUMMARY
+            fi
+          done < prs-metadata.tsv
+
+      # Finally, this sets the PR to allow auto-merging for patch and minor
+      # updates if all checks pass
+      #- name: Enable auto-merge for Dependabot PRs
+      #  if: ${{ steps.dependabot-metadata.outputs.update-type != 'version-update:semver-major' }}
+      #  env:
+      #    PR_URL: ${{ github.event.pull_request.html_url }}
+      #    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #  run: gh pr merge --auto --squash "$PR_URL"
+
