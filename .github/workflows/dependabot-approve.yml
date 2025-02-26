@@ -36,7 +36,6 @@ jobs:
             --json number,title,url,statusCheckRollup \
             > open-prs.json
 
-          # Get successful metadata workflow runs
           rm -f version-updates.txt
           workflow_runs=$(gh run list -R "$GITHUB_REPOSITORY" \
             -e 'pull_request' \
